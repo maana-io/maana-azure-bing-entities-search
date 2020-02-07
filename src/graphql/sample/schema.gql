@@ -1,0 +1,76 @@
+# Scalars
+scalar Date
+scalar JSON
+
+# Boilerplate
+type Info {
+  id: ID!
+  name: String!
+  description: String
+}
+
+type File {
+  id: ID!
+}
+
+input FileInput {
+  id: ID!
+}
+
+type Word {
+  id: ID!
+  boundingBox: [Int]
+  text: String
+}
+
+type Line {
+  id: ID!
+  boundingBox: [Int]
+  text: String
+  words: [Word]
+}
+
+type FormRecognitionResult {
+  id: ID!
+  recognitionResults: [RecognitionResults]
+  understandingResults: [UnderstandingResults]
+}
+
+type RecognitionResults {
+  id: ID!
+  page: Int
+  clockwiseOrientation: Float
+  width: Int
+  height: Int
+  unit: String
+  lines: [Line]
+}
+
+type UnderstandingField {
+  id: ID!
+  name: String
+  valueType: String
+  value: Float
+  text: String
+  elements: [UnderstandingElement]
+}
+
+type UnderstandingElement {
+  id: ID!
+  ref: String
+}
+
+type UnderstandingResults {
+  id: ID!
+  pages: [Int]
+  fields: [UnderstandingField]
+}
+
+# Query Root
+type Query {
+  # Boilerplate
+  info: Info
+
+  # Custom queries
+  recognizeForm(file: FileInput): FormRecognitionResult
+}
