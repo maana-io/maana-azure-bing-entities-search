@@ -22,6 +22,7 @@
     ]
   },
   "dependencies": {
+    "@azure/cognitiveservices-entitysearch": "^3.0.0",
     "@azure/cognitiveservices-formrecognizer": "^2.0.0",
     "@azure/ms-rest-azure-js": "^2.0.1",
     "@babel/runtime": "^7.7.7",

@@ -1,35 +1,35 @@
 import { log, print } from 'io.maana.shared'
 
 import { gql } from 'apollo-server-express'
-import pubsub from '../../pubsub'
 import uuid from 'uuid'
-import { FormRecognizerClient } from '@azure/cognitiveservices-formrecognizer'
+import { EntitySearchClient } from '@azure/cognitiveservices-entitysearch'
 import { CognitiveServicesCredentials } from '@azure/ms-rest-azure-js'
 import _ from 'lodash'
 import { getSecret } from '../../vault'
 
 require('dotenv').config()
-const promisePoll = (promiseFunction, { pollIntervalMs = 500 } = {}) => {
-  const startPoll = async resolve => {
-    const startTime = new Date()
-    const result = await promiseFunction()
-
-    if (result) return resolve()
-
-    const timeUntilNext = Math.max(pollIntervalMs - (new Date() - startTime), 0)
-    setTimeout(() => startPoll(resolve), timeUntilNext)
-  }
-
-  return new Promise(startPoll)
-}
 
 const SERVICE_ID = process.env.SERVICE_ID
-const SELF = SERVICE_ID || 'io.maana.template'
-const AZURE_FORM_RECOGNIZER_KEY_NAME =
-  process.env.AZURE_FORM_RECOGNIZER_KEY_NAME
-// dummy in-memory store
-const AZURE_FORM_RECOGNIZER_ENDPOINT =
-  process.env.AZURE_FORM_RECOGNIZER_ENDPOINT
+const SELF = SERVICE_ID || 'io.maana.bing.entities-search'
+const AZURE_BING_ENTITY_SEARCH_KEY_NAME =
+  process.env.AZURE_BING_ENTITY_SEARCH_KEY_NAME
+const AZURE_BING_ENTITY_SEARCH_ENDPOINT =
+  process.env.AZURE_BING_ENTITY_SEARCH_ENDPOINT
+
+const getEntitySearchClient = async () => {
+  const entitySearchKey = await getSecret(AZURE_BING_ENTITY_SEARCH_KEY_NAME)
+  const cognitiveServiceCredentials = new CognitiveServicesCredentials(
+    entitySearchKey
+  )
+  const client = new EntitySearchClient(
+    cognitiveServiceCredentials,
+    {
+      endpoint: AZURE_BING_ENTITY_SEARCH_ENDPOINT
+    }
+  )
+  return client
+}
+
 export const resolver = {
   Query: {
     info: async (_, args, { client }) => {
@@ -65,58 +65,39 @@ export const resolver = {
         description: `Maana Q Knowledge Service template using ${remoteId}`
       }
     },
-    recognizeForm: async (_parent, { file }) => {
-      const formRecognizerKey = await getSecret(AZURE_FORM_RECOGNIZER_KEY_NAME)
-      const cognitiveServiceCredentials = new CognitiveServicesCredentials(
-        formRecognizerKey
-      )
-      const client = new FormRecognizerClient(
-        cognitiveServiceCredentials,
-        AZURE_FORM_RECOGNIZER_ENDPOINT
-      )
-
-      const { operationLocation } = await client.batchReadReceipt(file.id)
-      const operationId = _.last(operationLocation.split('/'))
-
-      const checkIfOperationDoneAsync = async operationId => {
-        const { status } = await client.getReadReceiptResult(operationId)
-        return !(status === 'Running')
-      }
-
-      await promisePoll(() => checkIfOperationDoneAsync(operationId))
-      const {
-        recognitionResults,
-        understandingResults
-      } = await client.getReadReceiptResult(operationId)
-
-      return {
-        id: uuid(),
-        recognitionResults: recognitionResults.map(result => ({
+    extractEntities: async (_, { text }) => {
+      const client = await getEntitySearchClient()
+      
+      const result = await client.entities.search(text)
+      // console.log(JSON.stringify(result, null, 2))
+      const res = {
+        id: result.bingId || uuid(),
+        entities: result?.entities?.value.map(entity => ({
           id: uuid(),
-          ...result,
-          lines: result.lines.map(line => {
-            return {
-              id: uuid(),
-              ...line,
-              words: line.words.map(word => ({
-                id: uuid(),
-                ...word
-              }))
-            }
-          })
+          ...entity,
+          entityPresentationInfo: {
+            id: uuid(),
+            ...entity.entityPresentationInfo
+          },
+          image: {
+            id: uuid(),
+            ...entity.image
+          }
+          
         })),
-        understandingResults: understandingResults.map(result => ({
+        places: result?.places?.value.map(place => ({
           id: uuid(),
-          pages: result.pages,
-          fields: Object.keys(result.fields).map(key => {
-            return {
-              id: uuid(),
-              name: key,
-              ...result.fields[key]
-            }
-          })
+          ...place,
+          entityPresentationInfo: {
+            id: uuid(),
+            ...entity.entityPresentationInfo
+          }                
         }))
       }
-    }
+
+      console.log(JSON.stringify(res, null, 2))
+
+      return res
+    }    
   }
 }

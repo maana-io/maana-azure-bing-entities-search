@@ -9,61 +9,46 @@ type Info {
   description: String
 }
 
-type File {
+type EntityPresentationInfo {
   id: ID!
+  entityScenario: String
+  entityTypeDisplayHint: String
+  entityTypeHint: String
 }
 
-input FileInput {
+type Image {
   id: ID!
-}
-
-type Word {
-  id: ID!
-  boundingBox: [Int]
-  text: String
-}
-
-type Line {
-  id: ID!
-  boundingBox: [Int]
-  text: String
-  words: [Word]
-}
-
-type FormRecognitionResult {
-  id: ID!
-  recognitionResults: [RecognitionResults]
-  understandingResults: [UnderstandingResults]
-}
-
-type RecognitionResults {
-  id: ID!
-  page: Int
-  clockwiseOrientation: Float
-  width: Int
   height: Int
-  unit: String
-  lines: [Line]
-}
-
-type UnderstandingField {
-  id: ID!
+  width: Int
+  hostPageUrl: String
   name: String
-  valueType: String
-  value: Float
-  text: String
-  elements: [UnderstandingElement]
+  thumbnailUrl: String
 }
 
-type UnderstandingElement {
+type Entity {
   id: ID!
-  ref: String
+  description: String
+  entityPresentationInfo: EntityPresentationInfo
+  image: Image
+  name: String
+  webSearchUrl: String
 }
 
-type UnderstandingResults {
+type Place {
   id: ID!
-  pages: [Int]
-  fields: [UnderstandingField]
+  _type: String
+  address: String
+  name: String
+  entityPresentationInfo: EntityPresentationInfo
+  telephone: String
+  url: String
+  webSearchUrl: String
+}
+
+type EntitiesSearchResult {
+  id: ID!
+  entities: [Entity]
+  places: [Place]
 }
 
 # Query Root
@@ -71,6 +56,5 @@ type Query {
   # Boilerplate
   info: Info
 
-  # Custom queries
-  recognizeForm(file: FileInput): FormRecognitionResult
+  extractEntities(text: String): EntitiesSearchResult
 }
