@@ -66,10 +66,9 @@ export const resolver = {
       }
     },
     extractEntities: async (_, { text }) => {
-      const client = await getEntitySearchClient()
-      
+      const client = await getEntitySearchClient()      
       const result = await client.entities.search(text)
-      // console.log(JSON.stringify(result, null, 2))
+    
       const res = {
         id: result.bingId || uuid(),
         entities: result?.entities?.value.map(entity => ({
@@ -94,9 +93,6 @@ export const resolver = {
           }                
         }))
       }
-
-      console.log(JSON.stringify(res, null, 2))
-
       return res
     }    
   }
